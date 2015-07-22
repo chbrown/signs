@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<head>
+  <!-- http://ghkl/signs/ -->
+  <meta charset="utf-8">
+  <title>Video</title>
+  <link href="../favicon.ico" rel="icon" type="image/x-icon">
+  <script src="https://cdn.rawgit.com/antimatter15/whammy/master/whammy.js"></script>
+  <script src="build/bundle.js"></script>
+</head>
+<body ng-app="app" ng-controller="videoController">
+  <label>
+    <div>Video</div>
+    <video autoplay width="640" height="480"></video>
+  </label>
+
+  <h4>Status: {{mediaCanvas.capturing ? 'Recording' : 'Stopped'}}</h4>
+  <span>Frames: {{framecount}}</span>
+  <div>
+    <button ng-click="startCapture()">Start</button>
+    <button ng-click="stopCapture()">Stop</button>
+  </div>
+  <a download="capture.webm">Download</a>
+  <h4>Preview</h4>
+  <div>
+    <img ng-repeat="frame in mediaCanvas.frames | limitTo:100 track by $index" ng-src="{{frame}}"
+      style="width: 32px; height: 24px">
+  </div>
+
+  <table ng-show="false">
+    <caption><code>MediaStreamTrack.getSources()</code></caption>
+    <thead>
+      <th>facing</th>
+      <th>id</th>
+      <th>kind</th>
+      <th>label</th>
+    </thead>
+    <tbody>
+      <tr ng-repeat="source in sources">
+        <td>{{source.facing}}</td>
+        <td>{{source.id}}</td>
+        <td>{{source.kind}}</td>
+        <td>{{source.label}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+</body>

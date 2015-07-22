@@ -1,0 +1,38 @@
+{
+  "name": "signs",
+  "description": "Signed Languages vocabulary repository",
+  "keywords": [
+    "asl",
+    "sl",
+    "signed",
+    "languages",
+    "video"
+  ],
+  "version": "0.0.0",
+  "homepage": "https://github.com/chbrown/signs",
+  "repository": "git://github.com/chbrown/signs.git",
+  "author": "Christopher Brown <io@henrian.com> (http://henrian.com)",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "angular": "*",
+    "angular-resource": "*",
+    "angular-ui-router": "*",
+    "async": "*",
+    "cookiemonster": "*",
+    "flow-copy": "*",
+    "httprequest": "*",
+    "jszip": "*",
+    "lodash": "*",
+    "moment": "*",
+    "ngstorage": "gsklee/ngStorage",
+    "virtual-dom": "*"
+  },
+  "devDependencies": {
+    "browserify": "*",
+    "clean-css": "*",
+    "less": "*",
+    "watchify": "*",
+    "typescript": "*"
+  }
+}
