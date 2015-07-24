@@ -18,6 +18,13 @@ WebRTC:
 * https://github.com/muaz-khan/WebRTC-Experiment/tree/master/RecordRTC
 * http://lynckia.com/licode/
 
+
+ffmpeg:
+
+* https://github.com/cellofellow/ffmpeg
+* https://github.com/jrottenberg/ffmpeg
+
+
 ## License
 
 Copyright © 2015 Christopher Brown. [MIT Licensed](http://chbrown.github.io/licenses/MIT/#2015).

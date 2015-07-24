@@ -4,44 +4,50 @@
   <meta charset="utf-8">
   <title>Video</title>
   <link href="../favicon.ico" rel="icon" type="image/x-icon">
-  <script src="https://cdn.rawgit.com/antimatter15/whammy/master/whammy.js"></script>
+  <link href="site.css" rel="stylesheet" type="text/css">
   <script src="build/bundle.js"></script>
 </head>
-<body ng-app="app" ng-controller="videoController">
-  <label>
-    <div>Video</div>
-    <video autoplay width="640" height="480"></video>
-  </label>
-
-  <h4>Status: {{mediaCanvas.capturing ? 'Recording' : 'Stopped'}}</h4>
-  <span>Frames: {{framecount}}</span>
+<body ng-app="app" ng-controller="signController">
   <div>
-    <button ng-click="startCapture()">Start</button>
-    <button ng-click="stopCapture()">Stop</button>
+    <label style="display: inline-block">
+      <div>Live</div>
+      <video autoplay width="640" height="480"></video>
+    </label>
+    <label style="display: inline-block">
+      <div>Recorded</div>
+      <img id="highlight" width="640" height="480">
+    </label>
   </div>
-  <a download="capture.webm">Download</a>
-  <h4>Preview</h4>
   <div>
-    <img ng-repeat="frame in mediaCanvas.frames | limitTo:100 track by $index" ng-src="{{frame}}"
-      style="width: 32px; height: 24px">
+    <button ng-click="startCapture()" ng-disabled="recorder.recording">Start</button>
+    <button ng-click="stopCapture()" ng-disabled="!recorder.recording">Stop</button>
   </div>
+  <h4>Filmstrip</h4>
+  <!-- 1.333 aspect ratio -->
+  <filmstrip frames="recorder.frames" width="64" height="48"
+    set-highlight="setHighlight(index)" set-frames="setFrames(frames)"></filmstrip>
 
-  <table ng-show="false">
-    <caption><code>MediaStreamTrack.getSources()</code></caption>
-    <thead>
-      <th>facing</th>
-      <th>id</th>
-      <th>kind</th>
-      <th>label</th>
-    </thead>
-    <tbody>
-      <tr ng-repeat="source in sources">
-        <td>{{source.facing}}</td>
-        <td>{{source.id}}</td>
-        <td>{{source.kind}}</td>
-        <td>{{source.label}}</td>
-      </tr>
-    </tbody>
-  </table>
+  <form class="hform" ng-submit="submit()">
+    <label>
+      <div><b>Gloss</b></div>
+      <input type="text" ng-model="sign.gloss"
+        style="font-size: 32px; width: 300px; border: 1px solid #222;">
+    </label>
+    <label>
+      <div><b>Description</b></div>
+      <textarea ng-model="sign.description"
+        style="height: 42px; width: 300px; border: 1px solid #222; resize: none;"></textarea>
+    </label>
+    <label>
+      <div><b>Video</b></div>
+      <div style="width: 150px">
+        {{sign.nframes}} frames, {{(sign.blob.size / 1024) | number:0}} KB
+      </div>
+    </label>
+    <label>
+      <div><b>&nbsp;</b></div>
+      <button style="font-size: 32px">Upload</button>
+    </label>
+  </form>
 
 </body>

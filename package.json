@@ -1,6 +1,6 @@
 {
   "name": "signs",
-  "description": "Signed Languages vocabulary repository",
+  "description": "Signed Languages vocabulary database",
   "keywords": [
     "asl",
     "sl",
@@ -26,13 +26,15 @@
     "lodash": "*",
     "moment": "*",
     "ngstorage": "gsklee/ngStorage",
+    "pako": "*",
     "virtual-dom": "*"
   },
   "devDependencies": {
     "browserify": "*",
     "clean-css": "*",
     "less": "*",
+    "typescript": "*",
     "watchify": "*",
-    "typescript": "*"
+    "watsh": "*"
   }
 }

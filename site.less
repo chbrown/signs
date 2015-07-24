@@ -1,0 +1,99 @@
+// --- general resets ---
+body {
+  margin: 0;
+}
+table {
+  border-spacing: 0;
+  border-collapse: collapse;
+  th, td {
+    font-size: 100%;
+    text-align: left;
+  }
+}
+// ----------------------
+// --- generic compact ---
+h1, h2, h3, h4, h5, h6 {
+  margin: 1ex 0;
+}
+div, span, section, nav, main, textarea, input, button {
+  box-sizing: border-box;
+}
+section {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+.vpad {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.hpad {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+// -----------------------
+// --- generic tables ---
+table {
+  &.fill {
+    width: 100%;
+  }
+  &.padded {
+    & > thead > tr > th, & > tbody > tr > td {
+      &:first-child { padding-left: 10px; }
+      &:last-child { padding-right: 10px; }
+    }
+  }
+  &.lined {
+    tbody td {
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+    }
+  }
+  &.striped {
+    tbody {
+      tr:nth-child(odd) {
+        background-color: rgba(255, 255, 255, 0.5);
+      }
+      tr:nth-child(even) {
+        background-color: rgba(0, 0, 0, 0.05);
+      }
+    }
+  }
+}
+// ----------------------
+body {
+  background-color: #FDFDFD;
+  font: 16px Helvetica;
+  // always show y-scrollbar so that graph width is calculated correctly
+  // overflow-y: scroll;
+  padding: 5px 10px;
+}
+nav {
+  padding: 10px;
+}
+table {
+  td {
+    // padding-right: 5px;
+  }
+}
+filmstrip {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  cursor: crosshair;
+  img {
+    pointer-events: none;
+  }
+  .selection {
+    outline: 1px solid green;
+    box-shadow: 0 0 15px 0 #000;
+  }
+
+}
+.hform {
+  display: flex;
+  flex-wrap: wrap;
+  label {
+    margin: 10px 10px 0 0;
+  }
+}
