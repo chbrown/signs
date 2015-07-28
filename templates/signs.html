@@ -1,0 +1,8 @@
+<main>
+  <h1>{{signs.length}} Signs</h1>
+  <article ng-repeat="sign in signs">
+    <header>{{sign.gloss}}</header>
+    <video ng-src="{{$storage.signsServer + '/uploads/' + sign.id + '.webm'}}" controls>
+    <p>{{sign.description}}</p>
+  </article>
+</main>

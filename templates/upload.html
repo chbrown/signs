@@ -1,0 +1,39 @@
+<div>
+  <label style="display: inline-block">
+    <div>Live</div>
+    <video autoplay width="640" height="480"></video>
+  </label>
+  <label style="display: inline-block">
+    <div>Recorded</div>
+    <img id="highlight" width="640" height="480" ng-src="{{highlight_img_src}}">
+  </label>
+</div>
+<div>
+  <button ng-click="startCapture()" ng-disabled="recorder.recording">Start</button>
+  <button ng-click="stopCapture()" ng-disabled="!recorder.recording">Stop</button>
+</div>
+<h4>Filmstrip ({{recorder.frames.length}} frames)</h4>
+<!-- 1.333 aspect ratio -->
+<filmstrip frames="recorder.frames" width="64" height="48" selection="filmstrip_selection"
+  on-mouse-event="filmstripMouseEvent(index, type)"></filmstrip>
+
+<form class="hform" ng-submit="submit()">
+  <label>
+    <div><b>Gloss</b></div>
+    <input type="text" ng-model="sign.gloss"
+      style="font-size: 24px; width: 300px; border: 1px solid #222;">
+  </label>
+  <label>
+    <div><b>Description</b></div>
+    <textarea ng-model="sign.description" rows="2"
+      style="width: 300px; border: 1px solid #222; resize: none;"></textarea>
+  </label>
+  <label>
+    <div><b>Frames</b></div>
+    <div style="font-size: 24px; width: 3ch;">{{filmstrip_selection.length}}</div>
+  </label>
+  <label>
+    <div><b>&nbsp;</b></div>
+    <button>Upload</button>
+  </label>
+</form>

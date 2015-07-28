@@ -25,6 +25,7 @@
     "jszip": "*",
     "lodash": "*",
     "moment": "*",
+    "notify-ui": "*",
     "ngstorage": "gsklee/ngStorage",
     "pako": "*",
     "virtual-dom": "*"

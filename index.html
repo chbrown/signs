@@ -1,53 +1,22 @@
 <!DOCTYPE html>
 <head>
-  <!-- http://ghkl/signs/ -->
   <meta charset="utf-8">
   <title>Video</title>
-  <link href="../favicon.ico" rel="icon" type="image/x-icon">
+  <link href="img/favicon.ico" rel="icon" type="image/x-icon">
   <link href="site.css" rel="stylesheet" type="text/css">
   <script src="build/bundle.js"></script>
 </head>
-<body ng-app="app" ng-controller="signController">
-  <div>
-    <label style="display: inline-block">
-      <div>Live</div>
-      <video autoplay width="640" height="480"></video>
-    </label>
-    <label style="display: inline-block">
-      <div>Recorded</div>
-      <img id="highlight" width="640" height="480">
-    </label>
-  </div>
-  <div>
-    <button ng-click="startCapture()" ng-disabled="recorder.recording">Start</button>
-    <button ng-click="stopCapture()" ng-disabled="!recorder.recording">Stop</button>
-  </div>
-  <h4>Filmstrip</h4>
-  <!-- 1.333 aspect ratio -->
-  <filmstrip frames="recorder.frames" width="64" height="48"
-    set-highlight="setHighlight(index)" set-frames="setFrames(frames)"></filmstrip>
-
-  <form class="hform" ng-submit="submit()">
-    <label>
-      <div><b>Gloss</b></div>
-      <input type="text" ng-model="sign.gloss"
-        style="font-size: 32px; width: 300px; border: 1px solid #222;">
-    </label>
-    <label>
-      <div><b>Description</b></div>
-      <textarea ng-model="sign.description"
-        style="height: 42px; width: 300px; border: 1px solid #222; resize: none;"></textarea>
-    </label>
-    <label>
-      <div><b>Video</b></div>
-      <div style="width: 150px">
-        {{sign.nframes}} frames, {{(sign.blob.size / 1024) | number:0}} KB
-      </div>
-    </label>
-    <label>
-      <div><b>&nbsp;</b></div>
-      <button style="font-size: 32px">Upload</button>
-    </label>
-  </form>
-
+<body ng-app="app">
+  <nav fixedflow>
+    <span class="tab" ui-sref-active="current">
+      <a ui-sref="signs">Signs</a>
+    </span>
+    <span class="tab" ui-sref-active="current">
+      <a ui-sref="upload">Upload</a>
+    </span>
+    <span class="tab" ui-sref-active="current">
+      <a ui-sref="config">Config</a>
+    </span>
+  </nav>
+  <ui-view></ui-view>
 </body>

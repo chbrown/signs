@@ -81,19 +81,89 @@ filmstrip {
   -moz-user-select: none;
   user-select: none;
   cursor: crosshair;
+  div {
+    position: relative;
+  }
+  span {
+    position: absolute;
+    height: 100%;
+  }
   img {
     pointer-events: none;
+    height: 100%;
   }
   .selection {
     outline: 1px solid green;
     box-shadow: 0 0 15px 0 #000;
+    background-color: rgba(255, 255, 255, 0.25);
   }
-
 }
 .hform {
   display: flex;
   flex-wrap: wrap;
   label {
     margin: 10px 10px 0 0;
+  }
+}
+
+.notification-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+
+  vertical-align: middle;
+  text-align: center;
+  padding: 10px;
+  pointer-events: none;
+}
+.notification {
+  display: inline-block;
+  vertical-align: middle;
+  background-color: rgba(0, 0, 0, .80);
+  border: 1px solid rgba(0, 0, 0, .90);
+  color: #DDD;
+  border-radius: 2px;
+  padding: 4px 8px;
+  margin: 5px;
+  pointer-events: auto;
+}
+
+article {
+  display: inline-block;
+  margin: 10px;
+  padding: 5px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  width: 360px;
+  header {
+    font-size: 125%;
+    font-weight: bold;
+  }
+  video {
+    width: 100%;
+  }
+}
+
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 0 21px;
+  z-index: 10;
+
+  background: url("img/favicon-16.png") 3px 2px no-repeat #444;
+
+  .tab {
+    padding: 3px 6px;
+    margin: 0 2px;
+    display: inline-block;
+    vertical-align: middle;
+    background-color: #CCC;
+    &:hover, &.current {
+      background-color: #FEFEFE;
+    }
   }
 }

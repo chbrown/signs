@@ -1,14 +1,13 @@
 /// <reference path="type_declarations/index.d.ts" />
 
-declare var MediaStreamTrack;
-declare var require;
-
-var pako = require('pako');
-// window['pako'] = pako;
-// import _ from 'lodash';
-import angular = require('angular');
-import 'ngstorage';
 import {Request} from 'httprequest';
+import {NotifyUI} from 'notify-ui';
+var pako = require('pako');
+
+import angular = require('angular');
+import 'angular-ui-router';
+import 'ngstorage';
+import 'flow-copy';
 
 /** cross-vendor compatibility */
 function getUserMedia(constraints, successCallback, errorCallback) {
@@ -18,7 +17,7 @@ function getUserMedia(constraints, successCallback, errorCallback) {
 }
 
 interface Frame {
-  image: string; // JPEG/WebP data URL
+  image: string; // JPEG/WebP data URL (JPEG for now)
   duration: number; // milliseconds
 }
 
@@ -30,7 +29,7 @@ class VideoCapture {
   private height: number;
   private canvas: HTMLCanvasElement;
   private context: CanvasRenderingContext2D;
-  constructor(private type = 'image/jpeg', private quality = 0.9) { }
+  constructor(private type = 'image/jpeg', private quality = 0.8) { }
   /**
   Use the internal canvas to render the video to the desired image format,
   returning a DataURL string. It will initialize the canvas and context with the
@@ -54,7 +53,7 @@ class VideoCapture {
   }
 }
 
-const jpeg_capture = new VideoCapture('image/jpeg', 0.6);
+const jpeg_capture = new VideoCapture('image/jpeg', 0.8);
 
 class Recorder {
   private ms_per_frame: number;
@@ -73,7 +72,6 @@ class Recorder {
     requestAnimationFrame((timestamp) => this.capture(timestamp));
     // decide if it's time to draw
     var elapsed_since_last_draw = timestamp - this.last_capture;
-    // console.log('elapsed_since_last_draw', elapsed_since_last_draw);
     if (elapsed_since_last_draw > this.ms_per_frame) {
       this.last_capture = timestamp - (elapsed_since_last_draw % this.ms_per_frame);
       var frame = jpeg_capture.render(this.video);
@@ -85,7 +83,6 @@ class Recorder {
     }
   }
   start() {
-    console.log('Recorder#start');
     this.recording = true;
     // stick a frame on the stack and kick off the capture loop
     var frame = jpeg_capture.render(this.video);
@@ -94,7 +91,6 @@ class Recorder {
     requestAnimationFrame((timestamp) => this.capture(timestamp));
   }
   stop() {
-    console.log('Recorder#stop');
     this.recording = false;
     var elapsed_since_last_draw = window.performance.now() - this.last_capture;
     this.durations.push(elapsed_since_last_draw);
@@ -102,7 +98,66 @@ class Recorder {
   }
 }
 
-var app = angular.module('app', ['ngStorage']);
+var app = angular.module('app', [
+  'ui.router',
+  'ngStorage',
+  'flow-copy',
+]);
+
+app.factory('httpErrorInterceptor', $q => {
+  return {
+   responseError: rejection => {
+      var message = `${rejection.config.method} ${rejection.config.url} error: ${rejection.data}`;
+      NotifyUI.add(message, 5000);
+      return $q.reject(rejection);
+    }
+  };
+});
+
+app.config($httpProvider => {
+  $httpProvider.interceptors.push('httpErrorInterceptor');
+});
+
+app.config($provide => {
+  $provide.decorator('$exceptionHandler', ($delegate, $injector) => {
+    return (exception, cause) => {
+      if (exception instanceof Error) {
+        NotifyUI.add(exception.message);
+        return;
+      }
+      $delegate(exception, cause);
+    };
+  });
+});
+
+app.config(($stateProvider, $urlRouterProvider) => {
+  $urlRouterProvider.otherwise(() => {
+    return '/signs';
+  });
+
+  $stateProvider
+  .state('signs', {
+    url: '/signs',
+    templateUrl: 'templates/signs.html',
+    controller: 'signsController',
+  })
+  .state('upload', {
+    url: '/upload',
+    templateUrl: 'templates/upload.html',
+    controller: 'uploadController',
+  })
+  .state('config', {
+    url: '/config',
+    templateUrl: 'templates/config.html',
+    controller: 'configController',
+  });
+});
+
+app.run($localStorage => {
+  $localStorage.$default({
+    signsServer: '../',
+  });
+});
 
 function px(length: number, fractionDigits = 3) {
   return length ? (length.toFixed(fractionDigits) + 'px') : length;
@@ -113,14 +168,44 @@ function pct(fraction: number, fractionDigits = 1) {
 }
 app.filter('pct', () => pct);
 
-app.controller('signController', ($scope, $timeout, $interval, $localStorage) => {
+app.controller('signsController', ($scope, $http, $localStorage) => {
+  $scope.$storage = $localStorage;
+  $http.get($scope.$storage.signsServer + '/signs').then((res) => {
+    $scope.signs = res.data;
+  });
+});
+
+interface UploadControllerScope extends angular.IScope {
+  $storage: {
+    signsServer: string,
+  };
+  filmstrip_selection: {start: number, length: number};
+  highlight_img_src: string;
+  recorder: Recorder;
+  sign: {
+    gloss: string,
+    description: string,
+  };
+  // view event handlers
+  startCapture: Function;
+  stopCapture: Function;
+  filmstripMouseEvent: Function;
+  submit: Function;
+}
+app.controller('uploadController', ($scope: UploadControllerScope, $localStorage) => {
   $scope.$storage = $localStorage;
 
-  MediaStreamTrack.getSources(function(sourceInfos) {
-    $timeout(function() {
-      $scope.sources = sourceInfos;
-    });
-  });
+  var mousedown = false;
+  var selection_start = 0;
+  var selection_end = 0;
+  $scope.filmstrip_selection = {
+    start: 0,
+    length: 0,
+  };
+  $scope.sign = {
+    gloss: '',
+    description: '',
+  };
 
   var video = <HTMLVideoElement>document.querySelector('video');
   // http://src.chromium.org/svn/trunk/src/chrome/test/data/webrtc/manual/constraints.html
@@ -136,82 +221,99 @@ app.controller('signController', ($scope, $timeout, $interval, $localStorage) =>
       }
     }
   }, function getUserMediaSuccessCallback(mediaStream) {
-    // console.log('Initialized video MediaStream', mediaStream);
-    var stream_url = URL.createObjectURL(mediaStream);
-    // console.log('Created ObjectURL "%s" from MediaStream', stream_url);
-    video.src = stream_url;
+    video.src = URL.createObjectURL(mediaStream);
   }, function getUserMediaErrorCallback(mediaStreamError) {
-    console.error('Failed to initialize MediaStream: %s', mediaStreamError);
+    NotifyUI.add(`Failed to initialize MediaStream: ${mediaStreamError.message}`);
   });
 
-  var recorder = $scope.recorder = new Recorder(video, 30);
+  var recorder;
   $scope.startCapture = () => {
     recorder = $scope.recorder = new Recorder(video, 30);
-    // window['recorder'] = recorder;
     recorder.start();
   };
   $scope.stopCapture = () => {
     recorder.stop();
+    selection_start = 0;
+    selection_end = recorder.frames.length - 1;
+    updateFilmstripSelection();
   };
 
-  $scope.sign = {
-    gloss: 'test',
-    description: '',
-    nframes: 0,
-    blob: {size: 0},
-    framerate: 0,
+  document.addEventListener('mouseup', () => mousedown = false);
+  function updateFilmstripSelection() {
+    var [min, max] = (selection_start < selection_end) ?
+      [selection_start, selection_end] : [selection_end, selection_start];
+    $scope.filmstrip_selection.start = min;
+    $scope.filmstrip_selection.length = max + 1 - min;
+  }
+  $scope.filmstripMouseEvent = (index, type) => {
+    $scope.$apply(() => {
+      if (type == 'mousedown') {
+        mousedown = true;
+        selection_start = selection_end = index;
+      }
+      else if (type == 'mousemove') {
+        $scope.highlight_img_src = recorder.frames[index];
+        if (mousedown) {
+          selection_end = index;
+        }
+      }
+      updateFilmstripSelection();
+    });
   };
-
-  var highlight_img = document.getElementById('highlight');
-  var highlight_img_src = '';
-  $scope.setHighlight = (index) => {
-    // console.log('videoController:setHighlight', index, recorder.frames[index]);
-    var new_img_src = recorder.frames[index];
-    if (highlight_img_src !== new_img_src && new_img_src) {
-      highlight_img_src = highlight_img['src'] = new_img_src;
-    }
-  };
-
-  $scope.setFrames = (frames) => {
-    // console.log('setting frames', frames);
-    $scope.sign.nframes = frames.length;
-    var avg_ms_per_frame = recorder.durations.reduce((a, b) => a + b, 0) / recorder.durations.length;
-    // convert from ms per frame to frames per second
-    $scope.sign.framerate = 1000 / avg_ms_per_frame;
-
-    // var binary_images = frames.map(function(frame) { return atob(frame.slice(23)); });
-    var imagedata = frames.join('\n');
-    var imagedata_z = pako.deflate(imagedata);
-    $scope.sign.blob = new Blob([imagedata_z], {type: 'application/octet-stream'});
-  };
-
-  const server = 'https://localhost/signs-server';
 
   $scope.submit = () => {
-    var url = server + '/signs';
-    console.log('requesting url', url);
+    var url = $scope.$storage.signsServer + '/signs';
+    var start = $scope.filmstrip_selection.start;
+    var end = start + $scope.filmstrip_selection.length;
+    var frames = recorder.frames.slice(start, end);
+    var imagedata = frames.join('\n');
+    var imagedata_z = pako.deflate(imagedata);
+    var blob = new Blob([imagedata_z], {type: 'application/octet-stream'});
+    var durations = recorder.durations.slice(start, end);
+    var avg_ms_per_frame = durations.reduce((a, b) => a + b, 0) / durations.length;
+    // convert from ms per frame to frames per second
+    var framerate = 1000 / avg_ms_per_frame;
+
     var request = new Request('POST', url);
     request.addHeader('x-sign-gloss', $scope.sign.gloss);
     request.addHeader('x-sign-description', $scope.sign.description);
-    request.addHeader('x-framerate', $scope.sign.framerate);
-    request.sendData($scope.sign.blob, (error, response) => {
+    request.addHeader('x-framerate', framerate.toString());
+    request.sendData(blob, (error, response) => {
       console.log('request done', error, response);
+      NotifyUI.add(`Uploaded video with id=${response.id}!`);
     });
   };
 });
+
+app.controller('configController', ($scope, $localStorage) => {
+  $scope.$storage = $localStorage;
+});
+
+interface FilmstripScope extends angular.IScope {
+  width: number;
+  height: number;
+  frames: string[]; // list of data urls
+  selection: {start: number, length: number};
+  onMouseEvent: Function;
+  // calculated:
+  bounds?: ClientRect;
+  pixels_per_frame: number;
+  keyframes: {src: string, left: number}[];
+  keyframe_outerWidth: number;
+}
 
 app.directive('filmstrip', () => {
   return {
     restrict: 'E',
     template: `
-      <div style="position: relative" ng-style="{height: (height | px)}">
-        <span ng-repeat="keyframe in keyframes track by $index"
-              style="position: absolute" ng-style="{left: (keyframe.left | px)}">
-          <img class="keyframe" ng-src="{{keyframe.src}}" ng-style="{width: (width | px), height: (height | px)}">
+      <div ng-style="{height: (height | px)}">
+        <span ng-repeat="keyframe in keyframes track by $index" ng-style="{left: (keyframe.left | px)}">
+          <img ng-src="{{keyframe.src}}" ng-style="{width: (keyframe_outerWidth | px)}">
         </span>
-        <span class="selection" ng-style="{position: 'absolute', height: (height | px),
-          left: (start_frame * pixels_per_frame | px),
-          width: ((end_frame - start_frame) * pixels_per_frame | px)}">
+        <span class="selection" ng-style="{
+          position: 'absolute',
+          left: (selection.start * pixels_per_frame | px),
+          width: ((selection.length) * pixels_per_frame | px)}">
           &nbsp;
         </span>
       </div>
@@ -219,62 +321,51 @@ app.directive('filmstrip', () => {
     scope: {
       width: '=',
       height: '=',
-      frames: '=', // list of data urls
-      setHighlight: '&', // call with single index
-      setFrames: '&', // call with list of data urls
+      frames: '=',
+      selection: '=',
+      onMouseEvent: '&', // call with {index: number, type: string}
     },
-    link: function(scope: any, el, attrs) {
+    link: (scope: FilmstripScope, el, attrs) => {
       var element = <HTMLElement>el[0];
-      var bounds = element.getBoundingClientRect();
-      // console.log('bounds:', bounds);
+      var elementOffsetX = element.offsetLeft - element.offsetParent.scrollLeft
 
-      var n_keyframes = bounds.width / scope.width;
-      var keyframe_offset = scope.width * n_keyframes / (n_keyframes | 0);
+      function overFrame(ev: MouseEvent) {
+        var offsetX = ev.clientX - elementOffsetX;
+        return (offsetX / scope.bounds.width) * scope.frames.length | 0;
+      }
 
-      scope.$watchCollection('frames', () => {
-        var frames: string[] = scope.frames || [];
-        var take_every_nth_keyframe = frames.length / n_keyframes;
-        scope.pixels_per_frame = bounds.width / frames.length;
+      window.addEventListener("resize", function() {
+        scope.$apply(() => reload());
+      });
+
+      function reload() {
+        var bounds = scope.bounds = element.getBoundingClientRect();
+        // n_keyframes, when fractional number of keyframes we will show, but
+        // we will only show an integer number of keyframes, so we round down.
+        var n_keyframes = bounds.width / scope.width;
+        // keyframe_offset is the amount of space each keyframe takes up,
+        // including padding.
+        scope.keyframe_outerWidth = scope.width * n_keyframes / (n_keyframes | 0);
+        var take_every_nth_keyframe = scope.frames.length / n_keyframes;
+        scope.pixels_per_frame = bounds.width / scope.frames.length;
         scope.keyframes = new Array(n_keyframes | 0);
         for (var i = 0; i < (n_keyframes | 0); i++) {
           scope.keyframes[i] = {
-            src: frames[i * take_every_nth_keyframe | 0],
-            left: i * keyframe_offset,
+            src: scope.frames[i * take_every_nth_keyframe | 0],
+            left: i * scope.keyframe_outerWidth,
           };
         }
-        // reset selection
-        scope.start_frame = 0;
-        scope.stop_frame = frames.length - 1;
-      });
-
-      var elementOffsetX = element.offsetLeft - element.offsetParent.scrollLeft
-      function overFrame(ev: MouseEvent) {
-        var offsetX = ev.clientX - elementOffsetX;
-        return (offsetX / bounds.width) * scope.frames.length | 0;
       }
+      scope.$watchCollection('frames', reload);
 
-      var mousedown = false;
-      el.on('mousedown', (ev) => {
-        mousedown = true;
-        scope.$apply(() => {
-          scope.start_frame = scope.end_frame = overFrame(ev);
-        });
+      element.addEventListener('mousedown', (ev) => {
+        scope.onMouseEvent({index: overFrame(ev), type: 'mousedown'});
       });
-      el.on('mouseup', (ev) => {
-        scope.$apply(() => {
-          scope.setFrames({frames: scope.frames.slice(scope.start_frame, scope.end_frame + 1)});
-          mousedown = false;
-        });
+      element.addEventListener('mouseup', (ev) => {
+        scope.onMouseEvent({index: overFrame(ev), type: 'mouseup'});
       });
-
-      el.on('mousemove', (ev) => {
-        scope.setHighlight({index: overFrame(ev)});
-        if (mousedown) {
-          scope.$apply(() => {
-            // don't allow selecting before the start frame
-            scope.end_frame = Math.max(scope.start_frame, overFrame(ev));
-          });
-        }
+      element.addEventListener('mousemove', (ev) => {
+        scope.onMouseEvent({index: overFrame(ev), type: 'mousemove'});
       });
     }
   };
