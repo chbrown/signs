@@ -4,7 +4,7 @@ DTS := lodash/lodash jquery/jquery angularjs/angular
 all: build/bundle.js img/favicon.ico
 type_declarations: $(DTS:%=type_declarations/DefinitelyTyped/%.d.ts)
 
-img/favicon-%.png: img/favicon-128.png
+img/favicon-%.png: img/logo.png
 	convert $< -resize $*x$* $@
 img/favicon.ico: img/favicon-16.png img/favicon-32.png
 	convert $^ $@
