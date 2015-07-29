@@ -29,6 +29,5 @@ build/bundle.js: app.js $(BIN)/browserify
 dev: $(BIN)/watsh $(BIN)/tsc $(BIN)/watchify
 	(\
    $(BIN)/watsh 'make site.css' site.less & \
-   $(BIN)/tsc -m commonjs -t ES5 -w *.ts & \
    $(BIN)/watchify -t browserify-ngannotate app.js -o build/bundle.js -v & \
    wait)
