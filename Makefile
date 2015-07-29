@@ -22,6 +22,9 @@ $(BIN)/watsh $(BIN)/tsc $(BIN)/lessc $(BIN)/cleancss $(BIN)/browserify:
 %.min.js: %.js
 	closure-compiler --angular_pass --language_in ECMASCRIPT5 --warning_level QUIET $< >$@
 
+app.js: app.ts $(BIN)/tsc
+	$(BIN)/tsc -m commonjs -t ES5 $<
+
 build/bundle.js: app.js $(BIN)/browserify
 	mkdir -p $(@D)
 	$(BIN)/browserify -t browserify-ngannotate $< -o $@
