@@ -10,7 +10,10 @@
   ],
   "version": "0.0.0",
   "homepage": "https://github.com/chbrown/signs",
-  "repository": "git://github.com/chbrown/signs.git",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chbrown/signs-server#gh-pages"
+  },
   "author": "Christopher Brown <io@henrian.com> (http://henrian.com)",
   "license": "MIT",
   "private": true,
