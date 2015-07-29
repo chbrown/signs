@@ -148,10 +148,11 @@ app.config(function ($stateProvider, $urlRouterProvider) {
         controller: 'configController',
     });
 });
-app.run(function ($localStorage) {
+app.run(function ($http, $localStorage) {
     $localStorage.$default({
         signsServer: '../',
     });
+    $http.defaults.headers.common['X-Token'] = $localStorage.token;
 });
 function px(length, fractionDigits) {
     if (fractionDigits === void 0) { fractionDigits = 3; }
@@ -168,6 +169,17 @@ app.controller('signsController', function ($scope, $http, $localStorage) {
     $http.get($scope.$storage.signsServer + '/signs').then(function (res) {
         $scope.signs = res.data;
     });
+    $scope.play = function (event) {
+        console.log('ev', event);
+        event.target.play();
+    };
+    $scope.delete = function (sign) {
+        $http.delete($scope.$storage.signsServer + '/signs/' + sign.id).then(function (res) {
+            var index = $scope.signs.indexOf(sign);
+            $scope.signs.splice(index, 1);
+            notify_ui_1.NotifyUI.add(res.data.message);
+        });
+    };
 });
 app.controller('uploadController', function ($scope, $localStorage) {
     $scope.$storage = $localStorage;

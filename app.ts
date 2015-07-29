@@ -161,10 +161,11 @@ app.config(($stateProvider, $urlRouterProvider) => {
   });
 });
 
-app.run($localStorage => {
+app.run(($http, $localStorage) => {
   $localStorage.$default({
     signsServer: '../',
   });
+  $http.defaults.headers.common['X-Token'] = $localStorage.token;
 });
 
 function px(length: number, fractionDigits = 3) {
@@ -181,6 +182,19 @@ app.controller('signsController', ($scope, $http, $localStorage) => {
   $http.get($scope.$storage.signsServer + '/signs').then((res) => {
     $scope.signs = res.data;
   });
+
+  $scope.play = (event) => {
+    console.log('ev', event);
+    event.target.play();
+  };
+
+  $scope.delete = (sign) => {
+    $http.delete($scope.$storage.signsServer + '/signs/' + sign.id).then((res) => {
+      var index = $scope.signs.indexOf(sign);
+      $scope.signs.splice(index, 1);
+      NotifyUI.add(res.data.message);
+    });
+  };
 });
 
 interface UploadControllerScope extends angular.IScope {
