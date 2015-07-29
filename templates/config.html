@@ -1,8 +1,31 @@
 <section class="hpad">
-  <form>
+  <h3>Servers</h3>
+  <label>
+    <div><b>signs-server</b></div>
+    <input ng-model="$storage.signsServer" style="width: 500px">
+  </label>
+</section>
+
+<section class="hpad" ng-hide="$storage.token">
+  <form ng-submit="login()">
+    <h3>Log in or create user</h3>
     <label>
-      <div><b>signs-server</b></div>
-      <input ng-model="$storage.signsServer" style="width: 500px">
+      <div><b>Email</b></div>
+      <input ng-model="email" style="width: 200px">
     </label>
+    <label>
+      <div><b>Password</b></div>
+      <input type="password" ng-model="password" style="width: 200px">
+    </label>
+    <div>
+      <button>Submit</button>
+    </div>
+  </form>
+</section>
+
+<section class="hpad" ng-show="$storage.token">
+  <h3>Logged in as Contributor#{{$storage.contributor_id}}</h3>
+  <form ng-submit="logout()">
+    <button>Logout</button>
   </form>
 </section>

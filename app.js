@@ -74,6 +74,12 @@ var Recorder = (function () {
             this.durations.push(elapsed_since_last_draw);
         }
     };
+    Recorder.prototype.reset = function () {
+        this.frames = [];
+        this.durations = [];
+        this.recording = false;
+        this.last_capture = undefined;
+    };
     Recorder.prototype.start = function () {
         var _this = this;
         this.recording = true;
@@ -99,8 +105,8 @@ var app = angular.module('app', [
 app.factory('httpErrorInterceptor', function ($q) {
     return {
         responseError: function (rejection) {
-            var message = rejection.config.method + " " + rejection.config.url + " error: " + rejection.data;
-            notify_ui_1.NotifyUI.add(message, 5000);
+            var message = rejection.data.message || JSON.stringify(rejection.data);
+            notify_ui_1.NotifyUI.add(rejection.config.method + " " + rejection.config.url + " error: " + message, 5000);
             return $q.reject(rejection);
         }
     };
@@ -111,8 +117,10 @@ app.config(function ($httpProvider) {
 app.config(function ($provide) {
     $provide.decorator('$exceptionHandler', function ($delegate, $injector) {
         return function (exception, cause) {
-            if (exception instanceof Error) {
-                notify_ui_1.NotifyUI.add(exception.message);
+            if (exception instanceof httprequest_1.NetworkError) {
+                console.error(exception);
+                var message = exception.message;
+                notify_ui_1.NotifyUI.add(message);
                 return;
             }
             $delegate(exception, cause);
@@ -190,9 +198,9 @@ app.controller('uploadController', function ($scope, $localStorage) {
     }, function getUserMediaErrorCallback(mediaStreamError) {
         notify_ui_1.NotifyUI.add("Failed to initialize MediaStream: " + mediaStreamError.message);
     });
-    var recorder;
+    var recorder = $scope.recorder = new Recorder(video, 30);
     $scope.startCapture = function () {
-        recorder = $scope.recorder = new Recorder(video, 30);
+        recorder.reset();
         recorder.start();
     };
     $scope.stopCapture = function () {
@@ -239,14 +247,29 @@ app.controller('uploadController', function ($scope, $localStorage) {
         request.addHeader('x-sign-gloss', $scope.sign.gloss);
         request.addHeader('x-sign-description', $scope.sign.description);
         request.addHeader('x-framerate', framerate.toString());
+        request.addHeader('x-token', $scope.$storage.token);
         request.sendData(blob, function (error, response) {
             console.log('request done', error, response);
             notify_ui_1.NotifyUI.add("Uploaded video with id=" + response.id + "!");
         });
     };
 });
-app.controller('configController', function ($scope, $localStorage) {
+app.controller('configController', function ($scope, $http, $localStorage) {
     $scope.$storage = $localStorage;
+    $scope.login = function () {
+        var contributor = {
+            email: $scope.email,
+            password: $scope.password,
+        };
+        $http.post($scope.$storage.signsServer + '/contributors', contributor).then(function (res) {
+            $scope.$storage.contributor_id = res.data.id;
+            $scope.$storage.token = res.data.token;
+        });
+    };
+    $scope.logout = function () {
+        delete $scope.$storage.contributor_id;
+        delete $scope.$storage.token;
+    };
 });
 app.directive('filmstrip', function () {
     return {

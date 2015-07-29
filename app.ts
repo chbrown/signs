@@ -1,6 +1,6 @@
 /// <reference path="type_declarations/index.d.ts" />
 
-import {Request} from 'httprequest';
+import {Request, NetworkError} from 'httprequest';
 import {NotifyUI} from 'notify-ui';
 var pako = require('pako');
 
@@ -82,6 +82,12 @@ class Recorder {
       this.durations.push(elapsed_since_last_draw);
     }
   }
+  reset() {
+    this.frames = [];
+    this.durations = [];
+    this.recording = false;
+    this.last_capture = undefined;
+  }
   start() {
     this.recording = true;
     // stick a frame on the stack and kick off the capture loop
@@ -107,8 +113,8 @@ var app = angular.module('app', [
 app.factory('httpErrorInterceptor', $q => {
   return {
    responseError: rejection => {
-      var message = `${rejection.config.method} ${rejection.config.url} error: ${rejection.data}`;
-      NotifyUI.add(message, 5000);
+      var message = rejection.data.message || JSON.stringify(rejection.data);
+      NotifyUI.add(`${rejection.config.method} ${rejection.config.url} error: ${message}`, 5000);
       return $q.reject(rejection);
     }
   };
@@ -121,8 +127,10 @@ app.config($httpProvider => {
 app.config($provide => {
   $provide.decorator('$exceptionHandler', ($delegate, $injector) => {
     return (exception, cause) => {
-      if (exception instanceof Error) {
-        NotifyUI.add(exception.message);
+      if (exception instanceof NetworkError) {
+        console.error(exception);
+        var message = exception.message;
+        NotifyUI.add(message);
         return;
       }
       $delegate(exception, cause);
@@ -178,6 +186,8 @@ app.controller('signsController', ($scope, $http, $localStorage) => {
 interface UploadControllerScope extends angular.IScope {
   $storage: {
     signsServer: string,
+    token: string,
+    contributor_id: number,
   };
   filmstrip_selection: {start: number, length: number};
   highlight_img_src: string;
@@ -226,9 +236,9 @@ app.controller('uploadController', ($scope: UploadControllerScope, $localStorage
     NotifyUI.add(`Failed to initialize MediaStream: ${mediaStreamError.message}`);
   });
 
-  var recorder;
+  var recorder = $scope.recorder = new Recorder(video, 30);
   $scope.startCapture = () => {
-    recorder = $scope.recorder = new Recorder(video, 30);
+    recorder.reset();
     recorder.start();
   };
   $scope.stopCapture = () => {
@@ -278,6 +288,7 @@ app.controller('uploadController', ($scope: UploadControllerScope, $localStorage
     request.addHeader('x-sign-gloss', $scope.sign.gloss);
     request.addHeader('x-sign-description', $scope.sign.description);
     request.addHeader('x-framerate', framerate.toString());
+    request.addHeader('x-token', $scope.$storage.token);
     request.sendData(blob, (error, response) => {
       console.log('request done', error, response);
       NotifyUI.add(`Uploaded video with id=${response.id}!`);
@@ -285,8 +296,23 @@ app.controller('uploadController', ($scope: UploadControllerScope, $localStorage
   };
 });
 
-app.controller('configController', ($scope, $localStorage) => {
+app.controller('configController', ($scope, $http, $localStorage) => {
   $scope.$storage = $localStorage;
+
+  $scope.login = () => {
+    var contributor = {
+      email: $scope.email,
+      password: $scope.password,
+    };
+    $http.post($scope.$storage.signsServer + '/contributors', contributor).then((res) => {
+      $scope.$storage.contributor_id = res.data.id;
+      $scope.$storage.token = res.data.token;
+    });
+  };
+  $scope.logout = () => {
+    delete $scope.$storage.contributor_id;
+    delete $scope.$storage.token;
+  };
 });
 
 interface FilmstripScope extends angular.IScope {
