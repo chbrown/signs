@@ -164,6 +164,7 @@ app.config(($stateProvider, $urlRouterProvider) => {
 app.run(($http, $localStorage) => {
   $localStorage.$default({
     signsServer: '../',
+    show_playback_controls: true,
   });
   $http.defaults.headers.common['X-Token'] = $localStorage.token;
 });
@@ -179,9 +180,13 @@ app.filter('pct', () => pct);
 
 app.controller('signsController', ($scope, $http, $localStorage) => {
   $scope.$storage = $localStorage;
-  $http.get($scope.$storage.signsServer + '/signs').then((res) => {
-    $scope.signs = res.data;
-  });
+
+  function refresh() {
+    $http.get($scope.$storage.signsServer + '/signs', {params: {q: $scope.$storage.q}}).then((res) => {
+      $scope.signs = res.data;
+    });
+  }
+  $scope.$watch('$storage.q', refresh);
 
   $scope.play = (event) => {
     console.log('ev', event);
@@ -210,13 +215,14 @@ interface UploadControllerScope extends angular.IScope {
     gloss: string,
     description: string,
   };
+  submitting: boolean;
   // view event handlers
   startCapture: Function;
   stopCapture: Function;
   filmstripMouseEvent: Function;
   submit: Function;
 }
-app.controller('uploadController', ($scope: UploadControllerScope, $localStorage) => {
+app.controller('uploadController', ($scope: UploadControllerScope, $timeout, $localStorage) => {
   $scope.$storage = $localStorage;
 
   var mousedown = false;
@@ -286,6 +292,7 @@ app.controller('uploadController', ($scope: UploadControllerScope, $localStorage
   };
 
   $scope.submit = () => {
+    $scope.submitting = true;
     var url = $scope.$storage.signsServer + '/signs';
     var start = $scope.filmstrip_selection.start;
     var end = start + $scope.filmstrip_selection.length;
@@ -304,8 +311,12 @@ app.controller('uploadController', ($scope: UploadControllerScope, $localStorage
     request.addHeader('x-framerate', framerate.toString());
     request.addHeader('x-token', $scope.$storage.token);
     request.sendData(blob, (error, response) => {
-      console.log('request done', error, response);
+      if (error) {
+        console.error('Error uploading video', error);
+        return NotifyUI.add(`Error uploading video! ${error}`);
+      }
       NotifyUI.add(`Uploaded video with id=${response.id}!`);
+      $timeout(() => $scope.submitting = false);
     });
   };
 });
@@ -320,12 +331,13 @@ app.controller('configController', ($scope, $http, $localStorage) => {
     };
     $http.post($scope.$storage.signsServer + '/contributors', contributor).then((res) => {
       $scope.$storage.contributor_id = res.data.id;
-      $scope.$storage.token = res.data.token;
+      $scope.$storage.token = $http.defaults.headers.common['X-Token'] = res.data.token;
     });
   };
   $scope.logout = () => {
     delete $scope.$storage.contributor_id;
     delete $scope.$storage.token;
+    delete $http.defaults.headers.common['X-Token'];
   };
 });
 

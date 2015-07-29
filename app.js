@@ -151,6 +151,7 @@ app.config(function ($stateProvider, $urlRouterProvider) {
 app.run(function ($http, $localStorage) {
     $localStorage.$default({
         signsServer: '../',
+        show_playback_controls: true,
     });
     $http.defaults.headers.common['X-Token'] = $localStorage.token;
 });
@@ -166,9 +167,12 @@ function pct(fraction, fractionDigits) {
 app.filter('pct', function () { return pct; });
 app.controller('signsController', function ($scope, $http, $localStorage) {
     $scope.$storage = $localStorage;
-    $http.get($scope.$storage.signsServer + '/signs').then(function (res) {
-        $scope.signs = res.data;
-    });
+    function refresh() {
+        $http.get($scope.$storage.signsServer + '/signs', { params: { q: $scope.$storage.q } }).then(function (res) {
+            $scope.signs = res.data;
+        });
+    }
+    $scope.$watch('$storage.q', refresh);
     $scope.play = function (event) {
         console.log('ev', event);
         event.target.play();
@@ -181,7 +185,7 @@ app.controller('signsController', function ($scope, $http, $localStorage) {
         });
     };
 });
-app.controller('uploadController', function ($scope, $localStorage) {
+app.controller('uploadController', function ($scope, $timeout, $localStorage) {
     $scope.$storage = $localStorage;
     var mousedown = false;
     var selection_start = 0;
@@ -244,6 +248,7 @@ app.controller('uploadController', function ($scope, $localStorage) {
         });
     };
     $scope.submit = function () {
+        $scope.submitting = true;
         var url = $scope.$storage.signsServer + '/signs';
         var start = $scope.filmstrip_selection.start;
         var end = start + $scope.filmstrip_selection.length;
@@ -261,8 +266,12 @@ app.controller('uploadController', function ($scope, $localStorage) {
         request.addHeader('x-framerate', framerate.toString());
         request.addHeader('x-token', $scope.$storage.token);
         request.sendData(blob, function (error, response) {
-            console.log('request done', error, response);
+            if (error) {
+                console.error('Error uploading video', error);
+                return notify_ui_1.NotifyUI.add("Error uploading video! " + error);
+            }
             notify_ui_1.NotifyUI.add("Uploaded video with id=" + response.id + "!");
+            $timeout(function () { return $scope.submitting = false; });
         });
     };
 });
@@ -275,12 +284,13 @@ app.controller('configController', function ($scope, $http, $localStorage) {
         };
         $http.post($scope.$storage.signsServer + '/contributors', contributor).then(function (res) {
             $scope.$storage.contributor_id = res.data.id;
-            $scope.$storage.token = res.data.token;
+            $scope.$storage.token = $http.defaults.headers.common['X-Token'] = res.data.token;
         });
     };
     $scope.logout = function () {
         delete $scope.$storage.contributor_id;
         delete $scope.$storage.token;
+        delete $http.defaults.headers.common['X-Token'];
     };
 });
 app.directive('filmstrip', function () {

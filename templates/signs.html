@@ -1,11 +1,24 @@
+<section class="hpad hform">
+  <label>
+    <div><b>Search</b></div>
+    <input ng-model="$storage.q" style="width: 200px">
+  </label>
+  <div class="block">
+    <div><b>View options</b></div>
+    <label><input type="checkbox" ng-model="$storage.show_playback_controls"> Show playback controls</label>
+  </div>
+</section>
 <main>
-  <h1>{{signs.length}} Signs</h1>
+  <div class="hpad">
+    <big><b>{{signs.length}} Signs</b></big> (click anywhere on the movie to play)
+  </div>
   <article ng-repeat="sign in signs">
     <header>{{sign.gloss}}</header>
     <aside ng-if="sign.contributor_id == $storage.contributor_id">
       <button ng-click="delete(sign)">Delete</button>
     </aside>
-    <video ng-src="{{$storage.signsServer + '/signs/' + sign.id + '.webm'}}" controls ng-click="play($event)">
+    <video ng-src="{{$storage.signsServer + '/signs/' + sign.id + '.webm'}}" ng-click="play($event)"
+      ng-attr-controls="{{$storage.show_playback_controls || undefined}}">
     <p>{{sign.description}}</p>
   </article>
 </main>
