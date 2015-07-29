@@ -32,6 +32,7 @@
   },
   "devDependencies": {
     "browserify": "*",
+    "browserify-ngannotate": "*",
     "clean-css": "*",
     "less": "*",
     "typescript": "*",
