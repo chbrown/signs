@@ -2,7 +2,7 @@
   <h1>{{signs.length}} Signs</h1>
   <article ng-repeat="sign in signs">
     <header>{{sign.gloss}}</header>
-    <aside ng-if="sign.contributor_id = $storage.contributor_id">
+    <aside ng-if="sign.contributor_id == $storage.contributor_id">
       <button ng-click="delete(sign)">Delete</button>
     </aside>
     <video ng-src="{{$storage.signsServer + '/signs/' + sign.id + '.webm'}}" controls ng-click="play($event)">
