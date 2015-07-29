@@ -1,213 +1,4 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-//// export module httprequest {
-var NetworkError = (function () {
-    function NetworkError(method, url) {
-        this.name = 'NetworkError';
-        this.message = this.name + " with request: " + method + " " + url;
-    }
-    return NetworkError;
-})();
-exports.NetworkError = NetworkError;
-/**
-Example:
-
-new Request('POST', '/api/reservations').sendData({venue_id: 100}, (err, response) => {
-  if (err) throw err;
-  console.log('got response', res);
-});
-*/
-var Request = (function () {
-    /**
-    XMLHttpRequest doesn't expose method and url after setting them, so we need
-    to keep track of them in the Request instance for error reporting purposes.
-    */
-    function Request(method, url, responseType) {
-        var _this = this;
-        if (responseType === void 0) { responseType = ''; }
-        this.method = method;
-        this.url = url;
-        this.headers = [];
-        this.xhr = new XMLHttpRequest();
-        this.xhr.responseType = responseType;
-        this.xhr.onreadystatechange = function (event) {
-            var readyState = _this.xhr.readyState;
-            if (readyState == 2) {
-                var content_type = _this.xhr.getResponseHeader('content-type');
-                if (content_type.indexOf('application/json') === 0) {
-                    _this.xhr.responseType = 'json';
-                }
-                else if (content_type.indexOf('text/xml') === 0) {
-                    _this.xhr.responseType = 'document';
-                }
-            }
-        };
-        this.xhr.onerror = function (event) {
-            _this.callback(new NetworkError(method, url));
-        };
-        // onload is better than onreadystatechange() { if (readyState == 4) ... }
-        //   since onload will not be called if there is an error.
-        this.xhr.onload = function (event) {
-            if (_this.xhr.status >= 400) {
-                var error = new Error(_this.xhr.response);
-                return _this.callback(error);
-            }
-            _this.callback(null, _this.xhr.response);
-        };
-    }
-    /**
-    Add a header-value pair to be set on the XMLHttpRequest once it is opened.
-    */
-    Request.prototype.addHeader = function (header, value) {
-        this.headers.push([header, value]);
-        return this;
-    };
-    Request.prototype.send = function (callback) {
-        return this.sendData(undefined, callback);
-    };
-    Request.prototype.sendJSON = function (object, callback) {
-        this.headers.push(['Content-Type', 'application/json']);
-        return this.sendData(JSON.stringify(object), callback);
-    };
-    Request.prototype.sendData = function (data, callback) {
-        var _this = this;
-        this.callback = callback;
-        // delay opening until we actually need to so that custom event listeners
-        // can be added by the user
-        this.xhr.open(this.method, this.url);
-        this.headers.forEach(function (_a) {
-            var header = _a[0], value = _a[1];
-            return _this.xhr.setRequestHeader(header, value);
-        });
-        try {
-            // this might raise an error without even trying the server if we break
-            // some kind of cross-origin request rule.
-            this.xhr.send(data);
-        }
-        catch (exc) {
-            setTimeout(function () { return callback(exc); }, 0);
-        }
-        return this;
-    };
-    return Request;
-})();
-exports.Request = Request;
-//// }
-
-},{}],2:[function(require,module,exports){
-//// export module notify-ui {
-var Notification = (function () {
-    function Notification(message, className) {
-        if (className === void 0) { className = 'notification'; }
-        this._element = document.createElement('div');
-        this._element.className = className;
-        this.message = message;
-    }
-    Object.defineProperty(Notification.prototype, "message", {
-        set: function (newMessage) {
-            if (this._message !== newMessage) {
-                this._message = this._element.textContent = newMessage;
-            }
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Notification.prototype.appendTo = function (parentNode) {
-        this._parentNode = parentNode;
-        this._parentNode.appendChild(this._element);
-    };
-    Notification.prototype.remove = function () {
-        if (this._parentNode) {
-            this._parentNode.removeChild(this._element);
-        }
-    };
-    return Notification;
-})();
-exports.Notification = Notification;
-var NotifyUI = (function () {
-    function NotifyUI(id, className) {
-        if (className === void 0) { className = 'notification-container'; }
-        this.id = id;
-        this.className = className;
-    }
-    Object.defineProperty(NotifyUI, "singleton", {
-        get: function () {
-            if (NotifyUI._singleton === undefined) {
-                NotifyUI._singleton = new NotifyUI('NotifyUI_container');
-            }
-            return NotifyUI._singleton;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(NotifyUI.prototype, "container", {
-        get: function () {
-            if (!this._container) {
-                // try to find existing container
-                this._container = document.getElementById(this.id);
-                if (this._container === null) {
-                    // create new element
-                    this._container = document.createElement('div');
-                    this._container.id = this.id;
-                    this._container.className = this.className;
-                }
-            }
-            // if the container has been detached from the document, it might still
-            // have parentNode set if it was detached along with its parent.
-            // TODO: benchmark this. Is Node.compareDocumentPosition() faster?
-            //                       Or maybe parentNode recursion?
-            //                       Or maybe baseURI === ''?
-            if (!document.body.contains(this._container)) {
-                // insert it at the top of the body
-                document.body.insertBefore(this._container, document.body.firstChild);
-            }
-            return this._container;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    NotifyUI.prototype.add = function (message, duration) {
-        if (duration === void 0) { duration = 3000; }
-        var notification = new Notification(message);
-        notification.appendTo(this.container);
-        if (duration) {
-            setTimeout(function () {
-                notification.remove();
-            }, duration);
-        }
-        return notification;
-    };
-    NotifyUI.add = function (message, duration) {
-        if (duration === void 0) { duration = 3000; }
-        return NotifyUI.singleton.add(message, duration);
-    };
-    NotifyUI.prototype.addPromise = function (promise, initial_message, duration) {
-        if (initial_message === void 0) { initial_message = '...'; }
-        if (duration === void 0) { duration = 3000; }
-        var notification = new Notification(initial_message);
-        notification.appendTo(this.container);
-        function callback(result) {
-            notification.message = result;
-            if (duration) {
-                setTimeout(function () {
-                    notification.remove();
-                }, duration);
-            }
-            return result;
-        }
-        promise.then(callback, callback);
-        return notification;
-    };
-    NotifyUI.addPromise = function (promise, initial_message, duration) {
-        if (initial_message === void 0) { initial_message = '...'; }
-        if (duration === void 0) { duration = 3000; }
-        return NotifyUI.singleton.addPromise(promise, initial_message, duration);
-    };
-    return NotifyUI;
-})();
-exports.NotifyUI = NotifyUI;
-//// }
-
-},{}],3:[function(require,module,exports){
 /// <reference path="type_declarations/index.d.ts" />
 var httprequest_1 = require('httprequest');
 var notify_ui_1 = require('notify-ui');
@@ -361,6 +152,7 @@ app.config(["$stateProvider", "$urlRouterProvider", function ($stateProvider, $u
 app.run(["$http", "$localStorage", function ($http, $localStorage) {
     $localStorage.$default({
         signsServer: '../',
+        show_playback_controls: true,
     });
     $http.defaults.headers.common['X-Token'] = $localStorage.token;
 }]);
@@ -376,9 +168,12 @@ function pct(fraction, fractionDigits) {
 app.filter('pct', function () { return pct; });
 app.controller('signsController', ["$scope", "$http", "$localStorage", function ($scope, $http, $localStorage) {
     $scope.$storage = $localStorage;
-    $http.get($scope.$storage.signsServer + '/signs').then(function (res) {
-        $scope.signs = res.data;
-    });
+    function refresh() {
+        $http.get($scope.$storage.signsServer + '/signs', { params: { q: $scope.$storage.q } }).then(function (res) {
+            $scope.signs = res.data;
+        });
+    }
+    $scope.$watch('$storage.q', refresh);
     $scope.play = function (event) {
         console.log('ev', event);
         event.target.play();
@@ -391,7 +186,7 @@ app.controller('signsController', ["$scope", "$http", "$localStorage", function 
         });
     };
 }]);
-app.controller('uploadController', ["$scope", "$localStorage", function ($scope, $localStorage) {
+app.controller('uploadController', ["$scope", "$timeout", "$localStorage", function ($scope, $timeout, $localStorage) {
     $scope.$storage = $localStorage;
     var mousedown = false;
     var selection_start = 0;
@@ -454,6 +249,7 @@ app.controller('uploadController', ["$scope", "$localStorage", function ($scope,
         });
     };
     $scope.submit = function () {
+        $scope.submitting = true;
         var url = $scope.$storage.signsServer + '/signs';
         var start = $scope.filmstrip_selection.start;
         var end = start + $scope.filmstrip_selection.length;
@@ -471,8 +267,12 @@ app.controller('uploadController', ["$scope", "$localStorage", function ($scope,
         request.addHeader('x-framerate', framerate.toString());
         request.addHeader('x-token', $scope.$storage.token);
         request.sendData(blob, function (error, response) {
-            console.log('request done', error, response);
+            if (error) {
+                console.error('Error uploading video', error);
+                return notify_ui_1.NotifyUI.add("Error uploading video! " + error);
+            }
             notify_ui_1.NotifyUI.add("Uploaded video with id=" + response.id + "!");
+            $timeout(function () { return $scope.submitting = false; });
         });
     };
 }]);
@@ -485,12 +285,13 @@ app.controller('configController', ["$scope", "$http", "$localStorage", function
         };
         $http.post($scope.$storage.signsServer + '/contributors', contributor).then(function (res) {
             $scope.$storage.contributor_id = res.data.id;
-            $scope.$storage.token = res.data.token;
+            $scope.$storage.token = $http.defaults.headers.common['X-Token'] = res.data.token;
         });
     };
     $scope.logout = function () {
         delete $scope.$storage.contributor_id;
         delete $scope.$storage.token;
+        delete $http.defaults.headers.common['X-Token'];
     };
 }]);
 app.directive('filmstrip', function () {
@@ -546,7 +347,7 @@ app.directive('filmstrip', function () {
     };
 });
 
-},{"angular":6,"angular-ui-router":4,"flow-copy":7,"httprequest":1,"ngstorage":8,"notify-ui":2,"pako":9}],4:[function(require,module,exports){
+},{"angular":4,"angular-ui-router":2,"flow-copy":5,"httprequest":6,"ngstorage":7,"notify-ui":8,"pako":9}],2:[function(require,module,exports){
 /**
  * State-based routing for AngularJS
  * @version v0.2.15
@@ -4917,7 +4718,7 @@ angular.module('ui.router.state')
   .filter('isState', $IsStateFilter)
   .filter('includedByState', $IncludedByStateFilter);
 })(window, window.angular);
-},{}],5:[function(require,module,exports){
+},{}],3:[function(require,module,exports){
 /**
  * @license AngularJS v1.4.3
  * (c) 2010-2015 Google, Inc. http://angularjs.org
@@ -33282,11 +33083,11 @@ var minlengthDirective = function() {
 })(window, document);
 
 !window.angular.$$csp() && window.angular.element(document.head).prepend('<style type="text/css">@charset "UTF-8";[ng\\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-hide-animate){display:none !important;}ng\\:form{display:block;}.ng-animate-shim{visibility:hidden;}.ng-anchor{position:absolute;}</style>');
-},{}],6:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 require('./angular');
 module.exports = angular;
 
-},{"./angular":5}],7:[function(require,module,exports){
+},{"./angular":3}],5:[function(require,module,exports){
 /*jslint browser: true */
 
 function FlowCopy(original) {
@@ -33333,7 +33134,102 @@ if (typeof angular !== 'undefined') {
   });
 }
 
-},{}],8:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
+//// export module httprequest {
+var NetworkError = (function () {
+    function NetworkError(method, url) {
+        this.name = 'NetworkError';
+        this.message = this.name + " with request: " + method + " " + url;
+    }
+    return NetworkError;
+})();
+exports.NetworkError = NetworkError;
+/**
+Example:
+
+new Request('POST', '/api/reservations').sendData({venue_id: 100}, (err, response) => {
+  if (err) throw err;
+  console.log('got response', res);
+});
+*/
+var Request = (function () {
+    /**
+    XMLHttpRequest doesn't expose method and url after setting them, so we need
+    to keep track of them in the Request instance for error reporting purposes.
+    */
+    function Request(method, url, responseType) {
+        var _this = this;
+        if (responseType === void 0) { responseType = ''; }
+        this.method = method;
+        this.url = url;
+        this.headers = [];
+        this.xhr = new XMLHttpRequest();
+        this.xhr.responseType = responseType;
+        this.xhr.onreadystatechange = function (event) {
+            var readyState = _this.xhr.readyState;
+            if (readyState == 2) {
+                var content_type = _this.xhr.getResponseHeader('content-type');
+                if (content_type.indexOf('application/json') === 0) {
+                    _this.xhr.responseType = 'json';
+                }
+                else if (content_type.indexOf('text/xml') === 0) {
+                    _this.xhr.responseType = 'document';
+                }
+            }
+        };
+        this.xhr.onerror = function (event) {
+            _this.callback(new NetworkError(method, url));
+        };
+        // onload is better than onreadystatechange() { if (readyState == 4) ... }
+        //   since onload will not be called if there is an error.
+        this.xhr.onload = function (event) {
+            if (_this.xhr.status >= 400) {
+                var error = new Error(_this.xhr.response);
+                return _this.callback(error);
+            }
+            _this.callback(null, _this.xhr.response);
+        };
+    }
+    /**
+    Add a header-value pair to be set on the XMLHttpRequest once it is opened.
+    */
+    Request.prototype.addHeader = function (header, value) {
+        this.headers.push([header, value]);
+        return this;
+    };
+    Request.prototype.send = function (callback) {
+        return this.sendData(undefined, callback);
+    };
+    Request.prototype.sendJSON = function (object, callback) {
+        this.headers.push(['Content-Type', 'application/json']);
+        return this.sendData(JSON.stringify(object), callback);
+    };
+    Request.prototype.sendData = function (data, callback) {
+        var _this = this;
+        this.callback = callback;
+        // delay opening until we actually need to so that custom event listeners
+        // can be added by the user
+        this.xhr.open(this.method, this.url);
+        this.headers.forEach(function (_a) {
+            var header = _a[0], value = _a[1];
+            return _this.xhr.setRequestHeader(header, value);
+        });
+        try {
+            // this might raise an error without even trying the server if we break
+            // some kind of cross-origin request rule.
+            this.xhr.send(data);
+        }
+        catch (exc) {
+            setTimeout(function () { return callback(exc); }, 0);
+        }
+        return this;
+    };
+    return Request;
+})();
+exports.Request = Request;
+//// }
+
+},{}],7:[function(require,module,exports){
 (function (root, factory) {
   'use strict';
 
@@ -33496,7 +33392,121 @@ if (typeof angular !== 'undefined') {
 
 }));
 
-},{"angular":6}],9:[function(require,module,exports){
+},{"angular":4}],8:[function(require,module,exports){
+//// export module notify-ui {
+var Notification = (function () {
+    function Notification(message, className) {
+        if (className === void 0) { className = 'notification'; }
+        this._element = document.createElement('div');
+        this._element.className = className;
+        this.message = message;
+    }
+    Object.defineProperty(Notification.prototype, "message", {
+        set: function (newMessage) {
+            if (this._message !== newMessage) {
+                this._message = this._element.textContent = newMessage;
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Notification.prototype.appendTo = function (parentNode) {
+        this._parentNode = parentNode;
+        this._parentNode.appendChild(this._element);
+    };
+    Notification.prototype.remove = function () {
+        if (this._parentNode) {
+            this._parentNode.removeChild(this._element);
+        }
+    };
+    return Notification;
+})();
+exports.Notification = Notification;
+var NotifyUI = (function () {
+    function NotifyUI(id, className) {
+        if (className === void 0) { className = 'notification-container'; }
+        this.id = id;
+        this.className = className;
+    }
+    Object.defineProperty(NotifyUI, "singleton", {
+        get: function () {
+            if (NotifyUI._singleton === undefined) {
+                NotifyUI._singleton = new NotifyUI('NotifyUI_container');
+            }
+            return NotifyUI._singleton;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NotifyUI.prototype, "container", {
+        get: function () {
+            if (!this._container) {
+                // try to find existing container
+                this._container = document.getElementById(this.id);
+                if (this._container === null) {
+                    // create new element
+                    this._container = document.createElement('div');
+                    this._container.id = this.id;
+                    this._container.className = this.className;
+                }
+            }
+            // if the container has been detached from the document, it might still
+            // have parentNode set if it was detached along with its parent.
+            // TODO: benchmark this. Is Node.compareDocumentPosition() faster?
+            //                       Or maybe parentNode recursion?
+            //                       Or maybe baseURI === ''?
+            if (!document.body.contains(this._container)) {
+                // insert it at the top of the body
+                document.body.insertBefore(this._container, document.body.firstChild);
+            }
+            return this._container;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    NotifyUI.prototype.add = function (message, duration) {
+        if (duration === void 0) { duration = 3000; }
+        var notification = new Notification(message);
+        notification.appendTo(this.container);
+        if (duration) {
+            setTimeout(function () {
+                notification.remove();
+            }, duration);
+        }
+        return notification;
+    };
+    NotifyUI.add = function (message, duration) {
+        if (duration === void 0) { duration = 3000; }
+        return NotifyUI.singleton.add(message, duration);
+    };
+    NotifyUI.prototype.addPromise = function (promise, initial_message, duration) {
+        if (initial_message === void 0) { initial_message = '...'; }
+        if (duration === void 0) { duration = 3000; }
+        var notification = new Notification(initial_message);
+        notification.appendTo(this.container);
+        function callback(result) {
+            notification.message = result;
+            if (duration) {
+                setTimeout(function () {
+                    notification.remove();
+                }, duration);
+            }
+            return result;
+        }
+        promise.then(callback, callback);
+        return notification;
+    };
+    NotifyUI.addPromise = function (promise, initial_message, duration) {
+        if (initial_message === void 0) { initial_message = '...'; }
+        if (duration === void 0) { duration = 3000; }
+        return NotifyUI.singleton.addPromise(promise, initial_message, duration);
+    };
+    return NotifyUI;
+})();
+exports.NotifyUI = NotifyUI;
+//// }
+
+},{}],9:[function(require,module,exports){
 // Top level file is just a mixin of submodules & constants
 'use strict';
 
@@ -39905,4 +39915,4 @@ function ZStream() {
 
 module.exports = ZStream;
 
-},{}]},{},[3]);
+},{}]},{},[1]);
