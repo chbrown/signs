@@ -1,4 +1,3 @@
-/// <reference path="type_declarations/index.d.ts" />
 var httprequest_1 = require('httprequest');
 var notify_ui_1 = require('notify-ui');
 var pako = require('pako');

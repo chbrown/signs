@@ -1,5 +1,3 @@
-/// <reference path="type_declarations/index.d.ts" />
-
 import {Request, NetworkError} from 'httprequest';
 import {NotifyUI} from 'notify-ui';
 var pako = require('pako');
